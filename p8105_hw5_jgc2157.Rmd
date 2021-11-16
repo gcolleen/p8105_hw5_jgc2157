@@ -1,0 +1,23 @@
+---
+title: "jgc2157_hw5"
+author: "Gunnar"
+date: "11/15/2021"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+libraries
+```{r}
+library(tidyverse)
+library(janitor)
+```
+
+Reading homicide csv from github
+```{r}
+urlfile <- 'https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv'
+homicides_df <- read.csv(url(urlfile))
+```
+
