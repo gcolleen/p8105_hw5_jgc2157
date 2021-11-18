@@ -37,5 +37,105 @@ Filter to Baltimore
 ```{r}
 baltimore_df <- homicides_df %>%
   filter(city_state == "Baltimore, MD")
+
+baltimore_summary <- baltimore_df %>%
+  summarise(
+    unsolved = sum(resolution == "unsolved"),
+    n = n()
+  )
+
+baltimore_test <- prop.test(
+  x = baltimore_summary %>% pull(unsolved),
+  n = baltimore_summary %>% pull(n)
+)
+
+baltimore_test %>%
+  broom::tidy()
 ```
 
+Table of unsolved and total murders for each city
+```{r}
+homicides_df %>%
+  group_by(city_state) %>%
+  summarise(
+    unsolved = sum(resolution == "unsolved"),
+    n = n()) %>%
+  knitr::kable(col.names = c("City", "Unsolved Murders", "Total Murders"))
+```
+
+Iterate across cities
+First, write a prop.test function and test on a sample city
+```{r}
+prop_test_function <- function(city_df) {
+  
+  city_summary <- city_df %>%
+  summarise(
+    unsolved = sum(resolution == "unsolved"),
+    n = n()
+  )
+
+  city_test <- prop.test(
+    x = city_summary %>% pull(unsolved),
+    n = city_summary %>% pull(n))
+  return(city_test)
+}
+
+prop_test_function(baltimore_df)
+```
+Now iterate across all cities
+
+```{r}
+results_df <- homicides_df %>%
+  nest(data = uid:resolution) %>%
+  mutate(
+    test_results = map(data, prop_test_function),
+    tidy_results = map(test_results, broom::tidy)
+  ) %>%
+  select(city_state, tidy_results) %>%
+  unnest(tidy_results) %>%
+  select(city_state, estimate, starts_with("conf"))
+```
+
+Plot of estimates and error bars for each city
+```{r}
+results_df %>%
+  mutate(city_state = fct_reorder(city_state, estimate)) %>%
+  ggplot(aes(x = city_state, y = estimate)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
+
+## Problem 2
+Reading in the data, adding "data/" prefix to files
+Then creating nested data for each of the respondents
+Seperate particpants by control vs experiment and number
+unnest study data and pivot long
+```{r}
+files_df <- tibble(
+  files = list.files("./data")) %>%
+  mutate(files = str_c("data", files, sep = "/"))
+
+research_df <- files_df %>%
+  mutate(respondents = map(files, read_csv)) %>%
+  mutate(study_arm = case_when(str_detect(files, "exp") ~ "experiment",
+                               str_detect(files, "con") ~ "control"),
+         participant_number = as.factor(parse_number(files))) %>%
+  unnest(respondents) %>%
+  pivot_longer(cols = week_1:week_8, names_to = "week", values_to = "observations") %>%
+  mutate(week = as.numeric(parse_number(week)))
+```
+
+Create spaghetti graph of observations over time split by study arm
+```{r}
+research_df %>%
+  ggplot(aes(x = week, y = observations, color = participant_number)) +
+  geom_line() +
+  ylab("Observations") +
+  xlab("Weeks") +
+  facet_grid(cols = vars(study_arm)) +
+  ggtitle("Observations Over Time by Study Arm")
+```
+
+In the above charts showing observations over time stratified by study arm, participants in the control arm appear to report the same observation over time while in the exeriment arm, participants appear to be reporting higher observations as time goes on. 
