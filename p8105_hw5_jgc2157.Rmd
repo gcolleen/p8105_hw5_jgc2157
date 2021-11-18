@@ -18,6 +18,24 @@ library(janitor)
 Reading homicide csv from github
 ```{r}
 urlfile <- 'https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv'
-homicides_df <- read.csv(url(urlfile))
+homicides_df <- read_csv(url(urlfile), na = c(" ", "Unknown"))
+```
+
+Creating city_state variable
+```{r}
+homicides_df <- homicides_df %>%
+  mutate(city_state = str_c(city, state, sep = ", "),
+         resolution = case_when(
+           disposition == "Closed without arrest" ~ "unsolved",
+           disposition == "Open/No arrest" ~ "unsolved",
+           disposition == "Closed by arrest" ~ "solved")) %>%
+  relocate(city_state) %>%
+  filter(city_state != "Tulsa, AL")
+```
+
+Filter to Baltimore
+```{r}
+baltimore_df <- homicides_df %>%
+  filter(city_state == "Baltimore, MD")
 ```
 
