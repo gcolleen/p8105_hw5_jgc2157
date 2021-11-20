@@ -16,13 +16,17 @@ library(janitor)
 ```
 
 Reading homicide csv from github
-```{r}
+```{r, warning=FALSE, message=FALSE}
 urlfile <- 'https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv'
 homicides_df <- read_csv(url(urlfile), na = c(" ", "Unknown"))
 ```
+###Describing the raw dataset
+
+The homicide data set contains 52,168 observations across 11 columns. Variables in the data set include unique id, reported date of murder, victim's last name, victim's first name, victim's race, victim's age, victim's sex, city, state, latitidue, longitude, and disposition of the case.
+
 
 Creating city_state variable
-```{r}
+```{r, warning=FALSE, message=FALSE}
 homicides_df <- homicides_df %>%
   mutate(city_state = str_c(city, state, sep = ", "),
          resolution = case_when(
@@ -34,7 +38,7 @@ homicides_df <- homicides_df %>%
 ```
 
 Filter to Baltimore
-```{r}
+```{r, warning=FALSE, message=FALSE}
 baltimore_df <- homicides_df %>%
   filter(city_state == "Baltimore, MD")
 
@@ -54,7 +58,7 @@ baltimore_test %>%
 ```
 
 Table of unsolved and total murders for each city
-```{r}
+```{r, warning=FALSE, message=FALSE}
 homicides_df %>%
   group_by(city_state) %>%
   summarise(
@@ -65,7 +69,7 @@ homicides_df %>%
 
 Iterate across cities
 First, write a prop.test function and test on a sample city
-```{r}
+```{r, warning=FALSE, message=FALSE}
 prop_test_function <- function(city_df) {
   
   city_summary <- city_df %>%
@@ -97,22 +101,25 @@ results_df <- homicides_df %>%
 ```
 
 Plot of estimates and error bars for each city
-```{r}
+```{r, warning=FALSE, message=FALSE}
 results_df %>%
   mutate(city_state = fct_reorder(city_state, estimate)) %>%
   ggplot(aes(x = city_state, y = estimate)) +
   geom_point() +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  xlab("City, State") +
+  ylab("Proportion of Murders that are Unsolved") +
+  ggtitle("Estinated Proportion of Murders which are Unsolved by City")
 ```
 
 
 ## Problem 2
 Reading in the data, adding "data/" prefix to files
 Then creating nested data for each of the respondents
-Seperate particpants by control vs experiment and number
+Separate participants by control vs experiment and number
 unnest study data and pivot long
-```{r}
+```{r, warning=FALSE, message=FALSE}
 files_df <- tibble(
   files = list.files("./data")) %>%
   mutate(files = str_c("data", files, sep = "/"))
@@ -128,7 +135,7 @@ research_df <- files_df %>%
 ```
 
 Create spaghetti graph of observations over time split by study arm
-```{r}
+```{r, warning=FALSE, message=FALSE}
 research_df %>%
   ggplot(aes(x = week, y = observations, color = participant_number)) +
   geom_line() +
@@ -139,3 +146,41 @@ research_df %>%
 ```
 
 In the above charts showing observations over time stratified by study arm, participants in the control arm appear to report the same observation over time while in the exeriment arm, participants appear to be reporting higher observations as time goes on. 
+
+## Problem 3
+Loading iris data
+
+```{r, warning=FALSE, message=FALSE}
+set.seed(10)
+
+iris_with_missing <- iris %>%
+  map_df(~replace(.x, sample(1:150, 20), NA)) %>%
+  mutate(species = as.character(Species))
+```
+
+Writing function to replace missing values
+```{r, warning=FALSE, message=FALSE}
+#first testing code
+iris_with_missing %>%
+  mutate(Sepal.Length = ifelse(is.na(Sepal.Length), mean(Sepal.Length, na.rm = TRUE), Sepal.Length), species = ifelse(is.na(species), "virginica", species)) 
+
+#function
+na_func <- function(x) {
+  if(is.numeric(x)) {
+    x = ifelse(is.na(x), mean(x, na.rm = TRUE), x)
+  } else if(is.character(x)) {
+    x = ifelse(is.na(x), "virginica", x)
+  }
+  return(x)
+}
+```
+
+Map na_func to the iris_with_missing data set
+```{r, warning=FALSE, message=FALSE}
+iris_no_na <- map_df(iris_with_missing, na_func)
+
+#testing the new data set
+iris_no_na %>%
+  tail()
+```
+
